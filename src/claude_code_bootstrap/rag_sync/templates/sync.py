@@ -161,6 +161,7 @@ def sync(rag_dir: Path = _RAG_DIR) -> None:
 
     changed = 0
     removed = 0
+    failed = 0
 
     for rel, abs_path in current_files.items():
         new_hash = hash_file(abs_path)
@@ -168,6 +169,8 @@ def sync(rag_dir: Path = _RAG_DIR) -> None:
             if mcp_call("ingest_file", abs_path):
                 tracked[rel] = new_hash
                 changed += 1
+            else:
+                failed += 1
 
     for rel in list(tracked.keys()):
         if rel not in current_files:
@@ -175,12 +178,22 @@ def sync(rag_dir: Path = _RAG_DIR) -> None:
             if mcp_call("delete_file", abs_path):
                 del tracked[rel]
                 removed += 1
+            else:
+                failed += 1
 
-    if changed == 0 and removed == 0:
+    if changed == 0 and removed == 0 and failed == 0:
         sys.exit(0)  # fast no-op
 
     manifest["files"] = tracked
     save_manifest(manifest, rag_dir)
+
+    if failed:
+        print(
+            f"Sync: {changed} updated, {removed} removed, {failed} failed (see stderr).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     print(f"Sync complete: {changed} updated, {removed} removed.")
 
 

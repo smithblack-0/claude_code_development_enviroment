@@ -230,6 +230,35 @@ def test_run_initial_sync_invokes_python(project):
 # ---------------------------------------------------------------------------
 
 
+def test_sync_exits_nonzero_on_mcp_failure(project, capsys):
+    """If mcp_call fails for all files, sync should exit non-zero, not silently succeed."""
+    with patch.object(sync, "mcp_call", return_value=False):
+        with pytest.raises(SystemExit) as exc:
+            sync.sync(project / "rag")
+        assert exc.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "failed" in captured.err
+
+
+def test_sync_partial_failure_reports_counts(project, capsys):
+    """Partial failures: succeeded files are tracked, failed ones are reported."""
+    calls = []
+
+    def fake_mcp(tool, path):
+        calls.append(path)
+        # Fail on README.md, succeed on everything else
+        return "README" not in str(path)
+
+    with patch.object(sync, "mcp_call", side_effect=fake_mcp):
+        with pytest.raises(SystemExit) as exc:
+            sync.sync(project / "rag")
+        assert exc.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "failed" in captured.err
+
+
 def test_mcp_call_prints_stderr_on_failure(project, capsys):
     from unittest.mock import MagicMock
 
