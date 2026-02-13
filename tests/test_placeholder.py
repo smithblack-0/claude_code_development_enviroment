@@ -1,4 +1,4 @@
-from claude_rag_sync import __version__
+from claude_code_bootstrap import __version__
 
 
 def test_version():

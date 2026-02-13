@@ -3,9 +3,9 @@ requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "claude-rag-sync"
+name = "claude-code-bootstrap"
 version = "0.1.0"
-description = "Set up a local RAG system with automatic sync for Claude Code projects"
+description = "Bootstrap tools for Claude Code projects"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -14,9 +14,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "tomli >= 1.1.0",
+]
 
 [project.scripts]
-claude-rag-sync = "claude_rag_sync.cli:main"
+claude-code-bootstrap = "claude_code_bootstrap.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -27,6 +30,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+claude_code_bootstrap = ["rag_sync/templates/*"]
 
 [tool.black]
 line-length = 88

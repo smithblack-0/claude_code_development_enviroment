@@ -1,18 +1,21 @@
-"""Tests for claude_rag_sync.installer"""
+"""Tests for the rag-sync install flow."""
 
-import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from claude_rag_sync.installer import (
+from claude_code_bootstrap.dependencies import check_dependencies
+from claude_code_bootstrap.rag_sync.config import (
+    read_config,
+    write_config,
+    write_usage_guide,
+)
+from claude_code_bootstrap.rag_sync.prompts import (
     DEFAULT_EXTENSIONS,
-    check_dependencies,
     confirm_config,
     get_extensions,
     walk_directory,
-    write_config,
-    write_usage_guide,
 )
 
 # ---------------------------------------------------------------------------
@@ -21,17 +24,17 @@ from claude_rag_sync.installer import (
 
 
 def test_check_dependencies_all_present():
+    tools = {"node": "https://nodejs.org/"}
     with patch("shutil.which", return_value="/usr/bin/something"):
-        check_dependencies()  # should not raise or exit
+        check_dependencies(tools)  # should not raise or exit
 
 
 def test_check_dependencies_missing_exits(capsys):
-    def fake_which(name):
-        return None if name == "mcp" else "/usr/bin/something"
+    tools = {"mcp": "https://example.com"}
 
-    with patch("shutil.which", side_effect=fake_which):
+    with patch("shutil.which", return_value=None):
         with pytest.raises(SystemExit):
-            check_dependencies()
+            check_dependencies(tools)
 
     captured = capsys.readouterr()
     assert "mcp" in captured.out
@@ -46,7 +49,6 @@ def test_walk_directory_include_all(tmp_path):
     (tmp_path / "src").mkdir()
     (tmp_path / "README.md").touch()
 
-    # Always answer "y"
     with patch("builtins.input", return_value="y"):
         included = walk_directory(tmp_path)
 
@@ -58,7 +60,6 @@ def test_walk_directory_skip_all(tmp_path):
     (tmp_path / "src").mkdir()
     (tmp_path / "README.md").touch()
 
-    # Always answer "n"
     with patch("builtins.input", return_value="n"):
         included = walk_directory(tmp_path)
 
@@ -102,7 +103,6 @@ def test_get_extensions_defaults():
 
 
 def test_get_extensions_custom():
-    # Decline defaults, then enter .rst and .json, then empty to finish
     answers = iter(["n", ".rst", ".json", ""])
     with patch("builtins.input", side_effect=lambda _: next(answers)):
         exts = get_extensions()
@@ -134,7 +134,7 @@ def test_confirm_config_no():
 
 
 # ---------------------------------------------------------------------------
-# write_config
+# write_config / read_config
 # ---------------------------------------------------------------------------
 
 
@@ -147,10 +147,12 @@ def test_write_config(tmp_path):
     }
     write_config(rag_dir, config)
 
-    config_path = rag_dir / "config.json"
+    config_path = rag_dir / "config.toml"
     assert config_path.exists()
-    loaded = json.loads(config_path.read_text())
-    assert loaded == config
+    loaded = read_config(rag_dir)
+    assert loaded["included_paths"] == config["included_paths"]
+    assert loaded["extensions"] == config["extensions"]
+    assert Path(loaded["base_dir"]) == Path(config["base_dir"])
 
 
 def test_write_config_creates_rag_dir(tmp_path):
@@ -176,7 +178,7 @@ def test_write_usage_guide(tmp_path):
     }
     write_usage_guide(rag_dir, config)
 
-    guide = (rag_dir / "usage_guide.md").read_text()
+    guide = (rag_dir / "rag_usage_guide.md").read_text()
     assert "query_documents" in guide
     assert "sync.py" in guide
     assert ".py" in guide
