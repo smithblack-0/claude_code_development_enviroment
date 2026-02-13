@@ -1,4 +1,21 @@
-"""Config reading and writing for rag-sync."""
+"""
+Config reading and writing for rag-sync.
+
+Config file: rag/config.toml
+
+Structure
+---------
+
+    base_dir = "/absolute/path/to/project"
+    included_paths = ["src", "tests", "README.md"]
+    extensions = [".py", ".md", ".txt"]
+
+Fields
+------
+base_dir        Absolute path to the project root. Forward slashes on all platforms.
+included_paths  Top-level paths (files or directories) relative to base_dir to index.
+extensions      File extensions to include when recursively scanning included_paths.
+"""
 
 from pathlib import Path
 from string import Template
