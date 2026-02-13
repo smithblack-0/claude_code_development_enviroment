@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.env
+
+# Distribution / packaging
+*.whl
+MANIFEST
+
+# pytest
+.pytest_cache/
+.cache/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# RAG database and sync state
+rag/lancedb/
+rag/.sync_manifest.json
+
+# Misc
+*.DS_Store
+nul
