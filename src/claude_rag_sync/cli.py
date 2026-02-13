@@ -11,7 +11,9 @@ import sys
 
 def cmd_install(args):
     """Run the interactive RAG setup and sync wiring."""
-    print("claude-rag-sync install — coming in Stage 2")
+    from claude_rag_sync.installer import run_install
+
+    run_install()
 
 
 def build_parser():
