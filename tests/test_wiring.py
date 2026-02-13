@@ -56,6 +56,19 @@ def test_register_mcp_server_failure_reports_stderr(tmp_path, capsys):
     assert "something went wrong" in captured.err
 
 
+def test_register_mcp_server_removes_before_adding(tmp_path):
+    ok = MagicMock()
+    ok.returncode = 0
+
+    with patch("subprocess.run", return_value=ok) as mock_run:
+        register_mcp_server(tmp_path)
+
+    calls = [c[0][0] for c in mock_run.call_args_list]
+    # First call must be the remove, second must be the add
+    assert "remove" in calls[0]
+    assert "add" in calls[1]
+
+
 def test_register_mcp_server_includes_base_dir_and_db_path(tmp_path):
     ok = MagicMock()
     ok.returncode = 0

@@ -22,7 +22,17 @@ _DB_SUBPATH = "rag/lancedb"
 
 
 def register_mcp_server(project_root: Path) -> None:
-    """Register mcp-local-rag with Claude Code at project scope."""
+    """Register mcp-local-rag with Claude Code at project scope.
+
+    Removes any existing registration first so re-runs always reflect
+    the current project root and DB path.
+    """
+    # Remove existing registration (ignore errors if not present)
+    subprocess.run(
+        ["claude", "mcp", "remove", "local-rag", "--scope", "project"],
+        capture_output=True,
+    )
+
     base_dir = str(project_root).replace("\\", "/")
     db_path = f"{base_dir}/{_DB_SUBPATH}"
 
