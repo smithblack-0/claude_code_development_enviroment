@@ -29,8 +29,17 @@ try:
 except ImportError:
     import tomli as tomllib  # type: ignore[no-redef]
 
+# ---------------------------------------------------------------------------
+# Paths and constants
+# ---------------------------------------------------------------------------
+
 # Script lives in rag/ -- config and manifest are siblings.
 _RAG_DIR = Path(__file__).parent
+
+_CONFIG_FILE = "config.toml"
+_MANIFEST_FILE = ".sync_manifest.json"
+_MCP_SERVER_CMD = ["npx", "-y", "mcp-local-rag"]
+_HASH_CHUNK_SIZE = 65536
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +49,7 @@ _RAG_DIR = Path(__file__).parent
 
 def read_config(rag_dir: Path = _RAG_DIR) -> dict:
     """Read rag/config.toml."""
-    with open(rag_dir / "config.toml", "rb") as f:
+    with open(rag_dir / _CONFIG_FILE, "rb") as f:
         return tomllib.load(f)
 
 
@@ -83,7 +92,7 @@ def hash_file(path: Path) -> str:
     """Return SHA256 digest of a file as 'sha256:<hex>'."""
     h = hashlib.sha256()
     with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
+        for chunk in iter(lambda: f.read(_HASH_CHUNK_SIZE), b""):
             h.update(chunk)
     return f"sha256:{h.hexdigest()}"
 
@@ -95,7 +104,7 @@ def hash_file(path: Path) -> str:
 
 def load_manifest(rag_dir: Path = _RAG_DIR) -> dict:
     """Load .sync_manifest.json; return empty manifest if missing."""
-    manifest_path = rag_dir / ".sync_manifest.json"
+    manifest_path = rag_dir / _MANIFEST_FILE
     if not manifest_path.exists():
         return {"files": {}, "last_sync": None}
     with open(manifest_path, encoding="utf-8") as f:
@@ -105,7 +114,7 @@ def load_manifest(rag_dir: Path = _RAG_DIR) -> dict:
 def save_manifest(manifest: dict, rag_dir: Path = _RAG_DIR) -> None:
     """Write .sync_manifest.json."""
     manifest["last_sync"] = datetime.now(timezone.utc).isoformat()
-    with open(rag_dir / ".sync_manifest.json", "w", encoding="utf-8") as f:
+    with open(rag_dir / _MANIFEST_FILE, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
 
@@ -117,13 +126,18 @@ def save_manifest(manifest: dict, rag_dir: Path = _RAG_DIR) -> None:
 def mcp_call(tool: str, file_path: Path) -> bool:
     """
     Invoke an mcp-local-rag tool via mcptools.
+    Prints stderr to sys.stderr on failure.
     Returns True on success.
     """
     params = json.dumps({"file": str(file_path).replace("\\", "/")})
     result = subprocess.run(
-        ["mcp", "call", tool, "--params", params, "npx", "-y", "mcp-local-rag"],
+        ["mcp", "call", tool, "--params", params] + _MCP_SERVER_CMD,
         capture_output=True,
     )
+    if result.returncode != 0:
+        print(f"[rag/sync] {tool} failed for {file_path}:", file=sys.stderr)
+        if result.stderr:
+            print(result.stderr.decode(errors="replace"), file=sys.stderr)
     return result.returncode == 0
 
 

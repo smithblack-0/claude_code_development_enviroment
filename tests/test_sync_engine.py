@@ -223,3 +223,39 @@ def test_run_initial_sync_invokes_python(project):
 
     args = mock_run.call_args[0][0]
     assert "sync.py" in args[-1]
+
+
+# ---------------------------------------------------------------------------
+# mcp_call error reporting
+# ---------------------------------------------------------------------------
+
+
+def test_mcp_call_prints_stderr_on_failure(project, capsys):
+    from unittest.mock import MagicMock
+
+    failed = MagicMock()
+    failed.returncode = 1
+    failed.stderr = b"connection refused"
+
+    with patch("subprocess.run", return_value=failed):
+        result = sync.mcp_call("ingest_file", project / "README.md")
+
+    assert result is False
+    captured = capsys.readouterr()
+    assert "ingest_file" in captured.err
+    assert "connection refused" in captured.err
+
+
+def test_mcp_call_no_output_on_success(project, capsys):
+    from unittest.mock import MagicMock
+
+    ok = MagicMock()
+    ok.returncode = 0
+    ok.stderr = b""
+
+    with patch("subprocess.run", return_value=ok):
+        result = sync.mcp_call("ingest_file", project / "README.md")
+
+    assert result is True
+    captured = capsys.readouterr()
+    assert captured.err == ""
