@@ -18,7 +18,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+_SERVER_NAME = "local-rag"
+_SCOPE = "project"
 _DB_SUBPATH = "rag/lancedb"
+_MCP_SERVER_CMD = ["npx", "-y", "mcp-local-rag"]
 
 
 def register_mcp_server(project_root: Path) -> None:
@@ -29,7 +32,7 @@ def register_mcp_server(project_root: Path) -> None:
     """
     # Remove existing registration (ignore errors if not present)
     subprocess.run(
-        ["claude", "mcp", "remove", "local-rag", "--scope", "project"],
+        ["claude", "mcp", "remove", _SERVER_NAME, "--scope", _SCOPE],
         capture_output=True,
     )
 
@@ -41,17 +44,15 @@ def register_mcp_server(project_root: Path) -> None:
             "claude",
             "mcp",
             "add",
-            "local-rag",
+            _SERVER_NAME,
             "--scope",
-            "project",
+            _SCOPE,
             "--env",
             f"BASE_DIR={base_dir}",
             "--env",
             f"DB_PATH={db_path}",
             "--",
-            "npx",
-            "-y",
-            "mcp-local-rag",
+            *_MCP_SERVER_CMD,
         ],
         capture_output=True,
     )
