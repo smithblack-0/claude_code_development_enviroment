@@ -24,6 +24,7 @@ claude-code-bootstrap = "claude_code_bootstrap.cli:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-dotenv>=0.5",
     "black>=23.0",
     "ruff>=0.1",
 ]
@@ -33,6 +34,13 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 claude_code_bootstrap = ["rag_sync/templates/*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires node, npx, and mcptools (mcp) on PATH",
+    "e2e: requires claude CLI on PATH and ANTHROPIC_API_KEY set",
+]
+env_files = [".env"]
 
 [tool.black]
 line-length = 88

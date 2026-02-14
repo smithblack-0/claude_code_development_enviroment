@@ -139,7 +139,7 @@ def test_save_and_load_manifest(tmp_path):
 def test_sync_ingests_new_file(project):
     calls = []
 
-    def fake_mcp(tool, path):
+    def fake_mcp(tool, path, env=None):
         calls.append((tool, path))
         return True
 
@@ -170,7 +170,7 @@ def test_sync_removes_deleted_file(project):
 
     calls = []
 
-    def fake_mcp(tool, path):
+    def fake_mcp(tool, path, env=None):
         calls.append((tool, path))
         return True
 
@@ -188,7 +188,7 @@ def test_sync_reingest_on_change(project):
 
     calls = []
 
-    def fake_mcp(tool, path):
+    def fake_mcp(tool, path, env=None):
         calls.append((tool, path))
         return True
 
@@ -245,7 +245,7 @@ def test_sync_partial_failure_reports_counts(project, capsys):
     """Partial failures: succeeded files are tracked, failed ones are reported."""
     calls = []
 
-    def fake_mcp(tool, path):
+    def fake_mcp(tool, path, env=None):
         calls.append(path)
         # Fail on README.md, succeed on everything else
         return "README" not in str(path)

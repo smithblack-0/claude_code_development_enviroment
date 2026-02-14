@@ -58,9 +58,11 @@ def run_install() -> None:
     write_config(rag_dir, config)
     write_usage_guide(rag_dir, config)
 
+    python_cmd = sys.executable
+
     run_initial_sync(project_root)
     register_mcp_server(project_root)
-    wire_hooks(project_root)
+    wire_hooks(project_root, python_cmd)
     write_claude_md(project_root, config)
 
-    print("\nDone. Run 'python rag/sync.py' at any time to manually sync the index.")
+    print(f"\nDone. Run '{python_cmd} rag/sync.py' at any time to manually sync the index.")

@@ -21,7 +21,13 @@ from pathlib import Path
 _SERVER_NAME = "local-rag"
 _SCOPE = "project"
 _DB_SUBPATH = "rag/lancedb"
-_MCP_SERVER_CMD = ["npx", "-y", "mcp-local-rag"]
+# On native Windows, npx cannot be executed directly -- requires cmd /c wrapper.
+# See: https://code.claude.com/docs/en/mcp (Windows Users note)
+_MCP_SERVER_CMD = (
+    ["cmd", "/c", "npx", "-y", "mcp-local-rag"]
+    if sys.platform == "win32"
+    else ["npx", "-y", "mcp-local-rag"]
+)
 
 
 def register_mcp_server(project_root: Path) -> None:
@@ -32,7 +38,7 @@ def register_mcp_server(project_root: Path) -> None:
     """
     # Remove existing registration (ignore errors if not present)
     subprocess.run(
-        ["claude", "mcp", "remove", _SERVER_NAME, "--scope", _SCOPE],
+        ["claude", "mcp", "remove", "--scope", _SCOPE, _SERVER_NAME],
         capture_output=True,
     )
 
@@ -44,13 +50,13 @@ def register_mcp_server(project_root: Path) -> None:
             "claude",
             "mcp",
             "add",
-            _SERVER_NAME,
             "--scope",
             _SCOPE,
             "--env",
             f"BASE_DIR={base_dir}",
             "--env",
             f"DB_PATH={db_path}",
+            _SERVER_NAME,
             "--",
             *_MCP_SERVER_CMD,
         ],

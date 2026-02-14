@@ -17,35 +17,7 @@ from pathlib import Path
 
 _SETTINGS_FILE = ".claude/settings.json"
 _MANAGED_MARKER = "rag/sync.py"
-_SYNC_COMMAND = 'python "$CLAUDE_PROJECT_DIR/rag/sync.py"'
 _HOOK_TIMEOUT = 30
-
-_RAG_HOOKS = {
-    "PostToolUse": [
-        {
-            "matcher": "Write|Edit",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": _SYNC_COMMAND,
-                    "timeout": _HOOK_TIMEOUT,
-                }
-            ],
-        }
-    ],
-    "SessionStart": [
-        {
-            "matcher": "startup",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": _SYNC_COMMAND,
-                    "timeout": _HOOK_TIMEOUT,
-                }
-            ],
-        }
-    ],
-}
 
 
 def _is_managed(entry: dict) -> bool:
@@ -55,11 +27,42 @@ def _is_managed(entry: dict) -> bool:
     )
 
 
-def wire_hooks(project_root: Path) -> None:
+def wire_hooks(project_root: Path, python_cmd: str) -> None:
     """
     Merge rag-sync hooks into .claude/settings.json.
     Removes any previously managed hooks before adding fresh ones.
+
+    python_cmd: concrete Python executable path from the installer (sys.executable),
+                ensuring the correct interpreter and venv are used by the hook.
     """
+    sync_command = f'"{python_cmd}" rag/sync.py'
+    rag_hooks = {
+        "PostToolUse": [
+            {
+                "matcher": "Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": sync_command,
+                        "timeout": _HOOK_TIMEOUT,
+                    }
+                ],
+            }
+        ],
+        "SessionStart": [
+            {
+                "matcher": "startup",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": sync_command,
+                        "timeout": _HOOK_TIMEOUT,
+                    }
+                ],
+            }
+        ],
+    }
+
     settings_path = project_root / _SETTINGS_FILE
     settings_path.parent.mkdir(exist_ok=True)
 
@@ -79,7 +82,7 @@ def wire_hooks(project_root: Path) -> None:
             cleaned[event] = filtered
 
     # Add fresh managed hooks
-    for event, new_entries in _RAG_HOOKS.items():
+    for event, new_entries in rag_hooks.items():
         cleaned.setdefault(event, []).extend(new_entries)
 
     settings["hooks"] = cleaned

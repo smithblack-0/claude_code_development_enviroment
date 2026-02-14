@@ -19,6 +19,7 @@ Config format (config.toml):
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -123,16 +124,22 @@ def save_manifest(manifest: dict, rag_dir: Path = _RAG_DIR) -> None:
 # ---------------------------------------------------------------------------
 
 
-def mcp_call(tool: str, file_path: Path) -> bool:
+def mcp_call(tool: str, file_path: Path, env=None) -> bool:
     """
     Invoke an mcp-local-rag tool via mcptools.
     Prints stderr to sys.stderr on failure.
     Returns True on success.
+
+    env: environment variables for the mcp-local-rag subprocess.
+         Should include BASE_DIR and DB_PATH so the server uses the
+         correct security boundary and database.  When None, inherits
+         the current process environment (useful in tests).
     """
-    params = json.dumps({"file": str(file_path).replace("\\", "/")})
+    params = json.dumps({"file": str(file_path)})
     result = subprocess.run(
         ["mcp", "call", tool, "--params", params] + _MCP_SERVER_CMD,
         capture_output=True,
+        env=env,
     )
     if result.returncode != 0:
         print(f"[rag/sync] {tool} failed for {file_path}:", file=sys.stderr)
@@ -155,6 +162,10 @@ def sync(rag_dir: Path = _RAG_DIR) -> None:
     - Exits immediately (no output) if nothing has changed.
     """
     config = read_config(rag_dir)
+    base_dir = config["base_dir"]
+    db_path = str(Path(base_dir) / "rag" / "lancedb")
+    mcp_env = {**os.environ, "BASE_DIR": base_dir, "DB_PATH": db_path}
+
     current_files = collect_files(config)
     manifest = load_manifest(rag_dir)
     tracked = manifest.get("files", {})
@@ -166,7 +177,7 @@ def sync(rag_dir: Path = _RAG_DIR) -> None:
     for rel, abs_path in current_files.items():
         new_hash = hash_file(abs_path)
         if tracked.get(rel) != new_hash:
-            if mcp_call("ingest_file", abs_path):
+            if mcp_call("ingest_file", abs_path, mcp_env):
                 tracked[rel] = new_hash
                 changed += 1
             else:
@@ -174,8 +185,8 @@ def sync(rag_dir: Path = _RAG_DIR) -> None:
 
     for rel in list(tracked.keys()):
         if rel not in current_files:
-            abs_path = Path(config["base_dir"]) / rel
-            if mcp_call("delete_file", abs_path):
+            abs_path = Path(base_dir) / rel
+            if mcp_call("delete_file", abs_path, mcp_env):
                 del tracked[rel]
                 removed += 1
             else:

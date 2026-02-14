@@ -69,6 +69,22 @@ def test_register_mcp_server_removes_before_adding(tmp_path):
     assert "add" in calls[1]
 
 
+def test_register_mcp_server_arg_order(tmp_path):
+    """--scope and --env flags must precede server name; server name must precede --."""
+    ok = MagicMock()
+    ok.returncode = 0
+
+    with patch("subprocess.run", return_value=ok) as mock_run:
+        register_mcp_server(tmp_path)
+
+    args = mock_run.call_args[0][0]
+    scope_idx = args.index("--scope")
+    name_idx = args.index("local-rag")
+    separator_idx = args.index("--")
+    assert scope_idx < name_idx, "--scope must come before server name"
+    assert name_idx < separator_idx, "server name must come before -- separator"
+
+
 def test_register_mcp_server_includes_base_dir_and_db_path(tmp_path):
     ok = MagicMock()
     ok.returncode = 0
@@ -89,25 +105,25 @@ def test_register_mcp_server_includes_base_dir_and_db_path(tmp_path):
 
 
 def test_wire_hooks_creates_settings_file(tmp_path):
-    wire_hooks(tmp_path)
+    wire_hooks(tmp_path, "/fake/python")
     assert (tmp_path / ".claude" / "settings.json").exists()
 
 
 def test_wire_hooks_adds_post_tool_use(tmp_path):
-    wire_hooks(tmp_path)
+    wire_hooks(tmp_path, "/fake/python")
     settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
     assert "PostToolUse" in settings["hooks"]
 
 
 def test_wire_hooks_adds_session_start(tmp_path):
-    wire_hooks(tmp_path)
+    wire_hooks(tmp_path, "/fake/python")
     settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
     assert "SessionStart" in settings["hooks"]
 
 
 def test_wire_hooks_idempotent(tmp_path):
-    wire_hooks(tmp_path)
-    wire_hooks(tmp_path)
+    wire_hooks(tmp_path, "/fake/python")
+    wire_hooks(tmp_path, "/fake/python")
     settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
     # Should not have duplicate entries
     post_hooks = settings["hooks"]["PostToolUse"]
@@ -129,7 +145,7 @@ def test_wire_hooks_preserves_unrelated_hooks(tmp_path):
     settings_path.parent.mkdir()
     settings_path.write_text(json.dumps(existing))
 
-    wire_hooks(tmp_path)
+    wire_hooks(tmp_path, "/fake/python")
 
     settings = json.loads(settings_path.read_text())
     post_hooks = settings["hooks"]["PostToolUse"]
@@ -140,9 +156,7 @@ def test_wire_hooks_preserves_unrelated_hooks(tmp_path):
 
 def test_is_managed_true():
     entry = {
-        "hooks": [
-            {"type": "command", "command": 'python "$CLAUDE_PROJECT_DIR/rag/sync.py"'}
-        ]
+        "hooks": [{"type": "command", "command": "python rag/sync.py"}]
     }
     assert _is_managed(entry) is True
 

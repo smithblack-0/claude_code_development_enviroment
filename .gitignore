@@ -30,6 +30,9 @@ MANIFEST
 rag/lancedb/
 rag/.sync_manifest.json
 
+# Test dependency cache (mcp-local-rag embedding models)
+.test_cache/
+
 # Misc
 *.DS_Store
 nul
